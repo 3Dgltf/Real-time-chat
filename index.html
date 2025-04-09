@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Support</title>
+    <style>
+        /* --- Base Styles --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        html, body {
+             height: 100%; /* Ensure html/body take full height */
+        }
+        body {
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+            min-height: 100vh; /* Use min-height for flex centering */
+            display: flex;
+            flex-direction: column; /* Allow content centering */
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            padding: 10px; /* Padding for spacing on larger screens */
+            /* Removed overflow: hidden; */
+        }
+
+        /* --- Chat Container --- */
+        .chat-container {
+            width: 95%;
+            max-width: 550px;
+            height: 90vh; /* Use viewport height */
+            max-height: 750px;
+            background-color: rgba(255, 255, 255, 0.15); /* Slightly less transparent */
+            border-radius: 15px;
+            padding: 0; /* Remove padding here, apply to children */
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            overflow: hidden; /* Important: Prevent content spill */
+        }
+
+        /* --- Chat Header --- */
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px; /* Padding inside header */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 0.95em; /* Slightly larger */
+            flex-shrink: 0; /* Prevent header shrinking */
+            background-color: rgba(0, 0, 0, 0.1); /* Subtle header background */
+        }
+        #admin-status .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-left: 5px;
+            vertical-align: middle;
+            background-color: #ccc; /* Default offline */
+            transition: background-color 0.3s ease;
+        }
+        #admin-status .status-dot.online { background-color: #33ff33; }
+        #admin-status .status-dot.offline { background-color: #ccc; }
+
+        /* --- Messages Area --- */
+        .messages {
+            flex: 1; /* Takes available space */
+            overflow-y: auto;
+            padding: 15px 20px 10px 20px; /* Padding inside messages area */
+            display: flex;
+            flex-direction: column;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.3) transparent;
+        }
+        /* Webkit Scrollbar */
+        .messages::-webkit-scrollbar { width: 6px; }
+        .messages::-webkit-scrollbar-track { background: transparent; border-radius: 3px;}
+        .messages::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.4); border-radius: 3px;}
+
+        /* --- Message Styling --- */
+        .message-wrapper {
+             display: flex;
+             margin-bottom: 12px;
+             max-width: 85%;
+             animation: fadeIn 0.3s ease-out;
+             opacity: 0; /* Start hidden for animation */
+             animation-fill-mode: forwards; /* Keep final state */
+        }
+        .message-wrapper.sent { align-self: flex-end; justify-content: flex-end; }
+        .message-wrapper.received { align-self: flex-start; }
+        /* Bot message specific style */
+        .message-wrapper.bot { align-self: flex-start; }
+
+        .message-wrapper p {
+            padding: 10px 15px; border-radius: 15px; word-wrap: break-word;
+            background: rgba(255, 255, 255, 0.2); color: #fff;
+            line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .message-wrapper.sent p { background-color: #00c6ff; color: #000; border-bottom-right-radius: 5px; }
+        .message-wrapper.received p { background-color: #ffd700; color: #000; border-bottom-left-radius: 5px; }
+        .message-wrapper.bot p { background-color: rgba(255, 255, 255, 0.8); color: #333; border-bottom-left-radius: 5px;} /* Bot message style */
+
+
+        .message-wrapper .timestamp {
+            font-size: 0.7em; color: rgba(255, 255, 255, 0.7); margin-top: 4px; display: block;
+        }
+        .message-wrapper.sent .timestamp { text-align: right; padding-right: 5px;}
+        .message-wrapper.received .timestamp { text-align: left; padding-left: 5px;}
+        .message-wrapper.bot .timestamp { display: none; } /* Hide timestamp for bot messages */
+
+
+        /* Message Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- Typing Indicator --- */
+        #typing-indicator {
+            min-height: 18px; font-style: italic; color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85em; flex-shrink: 0;
+            padding: 0 20px 8px 20px; /* Padding to align with messages */
+        }
+
+        /* --- Input Area Container (holds input and call button/status) --- */
+        .input-area-container {
+             padding: 10px 20px 15px 20px; /* Padding around input elements */
+             flex-shrink: 0; /* Prevent shrinking */
+             background-color: rgba(0, 0, 0, 0.1); /* Subtle background */
+             border-top: 1px solid rgba(255, 255, 255, 0.1); /* Subtle separator */
+        }
+
+        /* --- Input Row (text input + send button) --- */
+        .input-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px; /* Space between input and call button */
+        }
+        .input-row input[type="text"] {
+            flex: 1; padding: 12px 15px; border: none; border-radius: 10px;
+            background-color: rgba(255, 255, 255, 0.9); color: #333; outline: none;
+            font-size: 0.95em;
+        }
+        .input-row input[type="text"]::placeholder { color: #777; }
+        .input-row input[type="text"]:disabled { background-color: #ddd; cursor: not-allowed; }
+
+        .input-row button {
+            padding: 12px 18px; border: none; border-radius: 10px; background-color: #00ffcc;
+            color: #000; cursor: pointer; font-weight: bold; transition: background-color 0.2s ease;
+            font-size: 0.95em;
+        }
+        .input-row button:hover { background-color: #00ccaa; }
+        .input-row button:disabled { background-color: #aaa; cursor: not-allowed; opacity: 0.7; }
+
+        /* --- Call Button and Status --- */
+        .audio-call {
+            background-color: #ff4f81; color: white; width: 100%;
+            padding: 11px; border: none; border-radius: 10px; cursor: pointer;
+            font-weight: bold; transition: background-color 0.2s ease, opacity 0.2s ease;
+            flex-shrink: 0; margin-bottom: 5px; /* Space before call status */
+            font-size: 0.95em;
+        }
+        .audio-call:hover { background-color: #f03a6a; }
+        .audio-call:disabled { background-color: #aaa; cursor: not-allowed; opacity: 0.7; }
+
+        #call-status {
+             text-align: center; font-weight: bold; min-height: 18px; /* Reduced height */
+             font-size: 0.8em; /* Smaller */
+             color: rgba(255, 255, 255, 0.8);
+             flex-shrink: 0;
+        }
+
+        /* --- Mobile Responsiveness --- */
+        @media (max-width: 600px) {
+            body { padding: 0; }
+            .chat-container {
+                width: 100%; height: 100%; max-height: none; border-radius: 0;
+            }
+            .chat-header { padding: 10px 15px; font-size: 0.9em;}
+            .messages { padding: 10px 15px 5px 15px; }
+            #typing-indicator { padding: 0 15px 5px 15px; }
+            .input-area-container { padding: 8px 15px 10px 15px; }
+            .input-row { gap: 8px; margin-bottom: 8px;}
+            .input-row input[type="text"] { padding: 10px 12px; font-size: 0.9em;}
+            .input-row button { padding: 10px 15px; font-size: 0.9em;}
+            .audio-call { padding: 10px; font-size: 0.9em;}
+            #call-status { font-size: 0.75em; }
+            .message-wrapper { max-width: 90%; }
+        }
+
+         /* --- Hidden Audio Elements --- */
+         .hidden-audio {
+             position: absolute; width: 1px; height: 1px;
+             opacity: 0; pointer-events: none;
+         }
+
+    </style>
+</head>
+<body>
+    <!-- Name Prompt is now integrated into the chat flow -->
+
+    <!-- Main Chat UI -->
+    <div class="chat-container">
+        <div class="chat-header">
+             <span>Chat Support</span>
+             <div id="admin-status">Admin: <span class="status-dot offline" title="Offline"></span></div>
+        </div>
+        <div class="messages" id="messages">
+             <!-- Bot prompt & messages appear here -->
+        </div>
+        <div id="typing-indicator"></div>
+        <div class="input-area-container">
+             <div class="input-row">
+                 <input type="text" id="messageInput" placeholder="Loading..." autocomplete="off" disabled/>
+                 <button id="sendButton" disabled>Send</button>
+             </div>
+             <button class="audio-call" id="audioCallButton" disabled>Audio Call</button>
+             <div id="call-status"></div>
+        </div>
+
+        <!-- Hidden Audio Elements for WebRTC -->
+        <audio id="localAudio" autoplay muted class="hidden-audio"></audio>
+        <audio id="remoteAudio" autoplay class="hidden-audio"></audio>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Firebase SDK Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+        import { getDatabase, ref, push, set, onValue, onChildAdded, serverTimestamp, onDisconnect, query, orderByChild, limitToLast, off, update, remove } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA5mBW5mXff46acu01BbPmZh8LGGXV42v8",
+            authDomain: "chat-app-ddecb.firebaseapp.com",
+            databaseURL: "https://chat-app-ddecb-default-rtdb.firebaseio.com",
+            projectId: "chat-app-ddecb",
+            storageBucket: "chat-app-ddecb.firebasestorage.app",
+            messagingSenderId: "534760202357",
+            appId: "1:534760202357:web:da7d90561af1c4220a183c",
+            measurementId: "G-MCSSLKG71W"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // --- DOM Elements ---
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const adminStatusSpan = document.getElementById('admin-status').querySelector('.status-dot');
+        const typingIndicatorDiv = document.getElementById('typing-indicator');
+        const callButton = document.getElementById('audioCallButton');
+        const callStatusDiv = document.getElementById('call-status');
+        const localAudio = document.getElementById('localAudio');
+        const remoteAudio = document.getElementById('remoteAudio');
+
+        // --- State Variables ---
+        let userId = null;
+        let userName = null;
+        let chatState = 'AWAITING_NAME'; // 'AWAITING_NAME', 'INITIALIZING', 'CHATTING', 'BLOCKED'
+        let chatRef = null;
+        let messagesRef = null;
+        let userStatusRef = null;
+        let userTypingRef = null;
+        let adminTypingRef = null;
+        let callRef = null;
+        let adminOnlineRef = ref(db, 'adminStatus/online');
+        let userMetadataRef = null;
+        let connectedRef = ref(db, '.info/connected');
+
+        let typingTimeout = null;
+        let messageListener = null;
+        let adminStatusListener = null;
+        let adminTypingListener = null;
+        let callListener = null;
+        let connectedListener = null;
+        let blockListener = null; // Listener specifically for block status
+
+        // --- WebRTC State ---
+        let peerConnection = null;
+        let localStream = null;
+        let callSignalListeners = {};
+
+        const rtcConfig = {
+            iceServers: [ { urls: 'stun:stun.l.google.com:19302' } ]
+        };
+
+        // --- Initialization ---
+        function initApp() {
+            // Initial UI setup
+            displayBotMessage("Welcome! Please enter your name to begin.");
+            messageInput.placeholder = "Enter your name...";
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            callButton.disabled = true; // Disabled until connected
+            callStatusDiv.textContent = '';
+
+            requestNotificationPermission();
+
+            // Event listeners for input
+            sendButton.onclick = handleUserInput;
+            messageInput.onkeydown = handleInputKeyDown; // Keep this for Enter key
+            callButton.onclick = handleCallButtonClick;
+        }
+
+        // --- Input Handling ---
+        function handleUserInput() {
+            const inputText = messageInput.value.trim();
+            if (!inputText) return;
+
+            messageInput.value = ''; // Clear input immediately
+
+            if (chatState === 'AWAITING_NAME') {
+                 processNameInput(inputText);
+            } else if (chatState === 'CHATTING') {
+                 sendMessage(inputText);
+            }
+        }
+
+        function handleInputKeyDown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleUserInput(); // Use central handler
+            } else if (chatState === 'CHATTING') {
+                // Only trigger typing indicator when actually chatting
+                handleUserTyping();
+            }
+        }
+
+        // --- Name Processing & Setup ---
+        function processNameInput(name) {
+            // Basic validation
+            if (!name) {
+                displayBotMessage("Name cannot be empty. Please enter your name.");
+                return;
+            }
+            if (name.length > 30) {
+                displayBotMessage("Name is too long (max 30 chars). Please enter a shorter name.");
+                return;
+            }
+
+            // Name is valid, proceed
+            userName = name;
+            userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+            chatState = 'INITIALIZING'; // Set state to initializing
+
+            // Update UI
+            displayMessage('sent', userName); // Show the name user typed
+            messageInput.placeholder = "Connecting...";
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+            callButton.disabled = true;
+            displayBotMessage(`Thanks, ${userName}! Setting up your chat...`);
+
+            console.log(`Initializing chat for User: ${userName} (Session ID: ${userId})`);
+
+            // Setup Firebase connection and listeners
+            setupFirebaseConnection();
+        }
+
+        async function setupFirebaseConnection() {
+            if (!userId || !userName) {
+                console.error("User ID or Name missing during setup.");
+                displayBotMessage("An error occurred during setup. Please refresh.");
+                chatState = 'AWAITING_NAME'; // Revert state
+                messageInput.placeholder = "Enter your name...";
+                messageInput.disabled = false; // Re-enable input
+                sendButton.disabled = false;
+                return;
+            }
+
+            // Define Firebase refs
+            chatRef = ref(db, `chats/${userId}`);
+            messagesRef = ref(db, `chats/${userId}/messages`);
+            userStatusRef = ref(db, `chats/${userId}/status`);
+            callRef = ref(db, `chats/${userId}/call`);
+            userTypingRef = ref(db, `chats/${userId}/status/userTyping`);
+            adminTypingRef = ref(db, `chats/${userId}/status/adminTyping`);
+            userMetadataRef = ref(db, `chats/${userId}/metadata`);
+            const userBlockRef = ref(db, `chats/${userId}/metadata/isBlocked`); // Specific ref for blocking
+
+            // Clean up any residual listeners from previous attempts/errors
+            cleanupListeners();
+
+            try {
+                // Store user metadata
+                 await set(userMetadataRef, {
+                     userName: userName, userId: userId,
+                     firstSeen: serverTimestamp(), lastActive: serverTimestamp(),
+                     isBlocked: false
+                 });
+
+                // Set up presence and disconnect handler
+                const userOnlineRef = ref(db, `chats/${userId}/status/userOnline`);
+                connectedListener = onValue(connectedRef, async (snap) => {
+                    if (snap.val() === true) {
+                        console.log("Firebase connected.");
+                        await set(userOnlineRef, true);
+                        await update(userMetadataRef, { lastActive: serverTimestamp() });
+                        onDisconnect(chatRef).remove(); // Remove session on disconnect
+                        onDisconnect(userOnlineRef).set(false); // Explicitly set offline on disconnect path
+                    } else {
+                        console.log("Firebase disconnected.");
+                         // We don't need to explicitly set offline here, as onDisconnect handles session removal.
+                    }
+                });
+
+                 // Load recent messages (optional, could be empty for new user)
+                const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(50));
+                // Clear messages div before attaching listener
+                messagesDiv.innerHTML = ''; // Clear any setup messages if needed
+                messageListener = onChildAdded(messagesQuery, handleNewMessage);
+
+
+                 // Attach other listeners AFTER basic setup is done
+                adminStatusListener = onValue(adminOnlineRef, handleAdminStatusChange);
+                adminTypingListener = onValue(adminTypingRef, handleAdminTypingChange);
+                callListener = onValue(callRef, handleCallStateChange);
+                blockListener = onValue(userBlockRef, handleBlockStatusChange); // Listen specifically for blocks
+
+
+                // --- Initialization Complete ---
+                chatState = 'CHATTING';
+                messageInput.placeholder = "Type your message...";
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                callButton.disabled = false; // Enable call button now
+                messageInput.focus();
+                displayBotMessage("You are connected! You can now send messages or start a call.");
+                 console.log("Chat setup complete. State: CHATTING");
+
+
+            } catch (error) {
+                 console.error("Error setting up Firebase connection:", error);
+                 displayBotMessage("Connection failed. Please refresh and try again.");
+                 chatState = 'AWAITING_NAME'; // Revert state
+                 messageInput.placeholder = "Enter your name...";
+                 messageInput.disabled = false;
+                 sendButton.disabled = false;
+            }
+        }
+
+
+        // --- Listener Handlers ---
+        function handleNewMessage(snapshot) {
+             const msg = snapshot.val();
+             const msgId = snapshot.key;
+             if (msg && !document.getElementById(`msg-${msgId}`)) { // Avoid duplicates if listener fires unexpectedly
+                 displayMessage(msg.sender, msg.text, msg.timestamp, msgId);
+                 if (msg.sender === 'admin' && document.hidden) {
+                     showNotification(`New message from Admin`);
+                 }
+             }
+        }
+
+        function handleAdminStatusChange(snapshot) {
+             const isOnline = snapshot.val();
+             console.log("Admin status changed:", isOnline);
+             adminStatusSpan.classList.toggle('online', isOnline);
+             adminStatusSpan.classList.toggle('offline', !isOnline);
+             adminStatusSpan.title = isOnline ? 'Online' : 'Offline';
+        }
+
+        function handleAdminTypingChange(snapshot) {
+             if (chatState === 'CHATTING') { // Only show if chatting
+                 typingIndicatorDiv.textContent = snapshot.val() ? 'Admin is typing...' : '';
+             }
+        }
+
+        function handleCallStateChange(snapshot) {
+             const callState = snapshot.val();
+             console.log("Call state changed:", callState);
+             // Update call UI only if not blocked
+             if (chatState !== 'BLOCKED') {
+                updateCallUI(callState);
+             }
+        }
+
+        function handleBlockStatusChange(snapshot) {
+             const isBlocked = snapshot.val();
+             if (isBlocked === true && chatState !== 'BLOCKED') { // Check current state to avoid redundant actions
+                 console.log("User has been blocked.");
+                 chatState = 'BLOCKED';
+                 handleBlockedStateUI();
+             }
+             // Note: We don't handle unblocking as the session is removed on disconnect.
+             // A new session would start unblocked.
+        }
+
+
+        // --- Blocked State Handling ---
+        function handleBlockedStateUI() {
+             disableChatInput();
+             callButton.disabled = true;
+             callStatusDiv.textContent = "Chat Blocked by Admin";
+             typingIndicatorDiv.textContent = ''; // Clear typing indicator
+             displayBotMessage("You have been blocked by the admin. Please refresh to start a new session if needed.");
+
+             // Clean up WebRTC if a call was active
+             if (peerConnection) {
+                 hangUpCall(false); // End call locally without signaling Firebase
+             }
+             // Optionally, clean up listeners sooner
+             // cleanupListeners(); // Or let onDisconnect handle it. Consider implications.
+        }
+
+        // --- UI Enable/Disable ---
+        function disableChatInput() {
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+        }
+
+        function enableChatInput() {
+            // Check state before enabling
+            if (chatState === 'CHATTING') {
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        // --- Messaging ---
+        function sendMessage(msgText) { // Accept text as argument
+            // Check state and userId
+            if (!msgText || chatState !== 'CHATTING' || !userId) {
+                 console.warn("Cannot send message. State:", chatState, "Msg:", msgText);
+                 return;
+            }
+
+            // Display locally first (optional, but good UX)
+             // displayMessage('sent', msgText, Date.now(), 'temp-' + Date.now()); // Temp display? Firebase listener should catch it.
+
+             const messageData = {
+                sender: 'user', text: msgText, timestamp: serverTimestamp(),
+                userId: userId, userName: userName
+             };
+
+             push(messagesRef, messageData)
+                .then(() => {
+                    if (userTypingRef) set(userTypingRef, false);
+                    clearTimeout(typingTimeout);
+                    update(userMetadataRef, { lastActive: serverTimestamp() });
+                    console.log("Message sent successfully.");
+                })
+                .catch(error => {
+                     console.error("Error sending message: ", error);
+                     // Maybe add message back to input or show error in UI
+                     displayBotMessage("Error: Could not send message.");
+                });
+        }
+
+        // Function to display messages from bot or users/admin
+        function displayMessage(sender, text, timestamp, msgId) {
+             const wrapper = document.createElement('div');
+             wrapper.classList.add('message-wrapper', sender); // 'sent', 'received', 'bot'
+             if (msgId) wrapper.id = `msg-${msgId}`;
+
+             const p = document.createElement('p');
+             p.textContent = text;
+
+             const timeSpan = document.createElement('span');
+             timeSpan.classList.add('timestamp');
+             // Only show timestamp for non-bot messages
+             if (sender !== 'bot') {
+                 timeSpan.textContent = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+             }
+
+             wrapper.appendChild(p);
+             if (sender !== 'bot') {
+                 wrapper.appendChild(timeSpan);
+             }
+
+             messagesDiv.appendChild(wrapper);
+             scrollToBottom();
+
+             // Trigger animation
+             // Force reflow before adding class for animation trigger if needed,
+             // but CSS animation on add should work.
+             void wrapper.offsetWidth; // Force reflow may not be needed with CSS keyframes
+             wrapper.style.animationPlayState = 'running'; // Ensure animation runs
+        }
+
+         // Helper function specifically for bot messages
+         function displayBotMessage(text) {
+             displayMessage('bot', text, null, 'bot-' + Date.now());
+         }
+
+
+        function scrollToBottom() {
+             setTimeout(() => { messagesDiv.scrollTop = messagesDiv.scrollHeight; }, 50);
+        }
+
+        // --- Typing Indicator ---
+        function handleUserTyping() {
+            if (!userTypingRef || chatState !== 'CHATTING') return; // Only if chatting
+            set(userTypingRef, true);
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                set(userTypingRef, false);
+            }, 2000);
+        }
+
+        // --- WebRTC Audio Call (Logic remains largely the same as previous version) ---
+
+        async function createPeerConnection() {
+             // ... (same as previous version)
+            if (peerConnection) {
+                console.log("Existing PeerConnection found, closing before creating new.");
+                peerConnection.close();
+            }
+            peerConnection = new RTCPeerConnection(rtcConfig);
+
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate && callRef && chatState === 'CHATTING') { // Check state
+                    console.log("Sending ICE candidate:", event.candidate);
+                    push(ref(db, `chats/${userId}/call/iceCandidates/user`), {
+                       ...event.candidate.toJSON(), sender: 'user'
+                    });
+                }
+            };
+
+            peerConnection.ontrack = (event) => {
+                console.log("Remote track received:", event.streams[0]);
+                if (event.streams && event.streams[0]) {
+                    remoteAudio.srcObject = event.streams[0];
+                    remoteAudio.play().catch(e => console.error("Remote audio play failed:", e));
+                }
+            };
+
+            peerConnection.onconnectionstatechange = () => {
+                 console.log("PeerConnection state:", peerConnection.connectionState);
+                 if (['disconnected', 'failed', 'closed'].includes(peerConnection.connectionState) && chatState !== 'BLOCKED') {
+                      // Only auto-hangup if not blocked (block handles cleanup)
+                      console.log("Call connection state change triggered hangup.");
+                      hangUpCall(false); // End locally if connection drops unexpectedly
+                 }
+             };
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                localAudio.srcObject = localStream;
+                localStream.getTracks().forEach(track => {
+                    if (peerConnection) peerConnection.addTrack(track, localStream);
+                });
+                console.log("Local stream acquired and tracks added.");
+            } catch (error) {
+                console.error("Error getting user media:", error);
+                displayBotMessage("Error: Could not access microphone. Check permissions.");
+                if(peerConnection) peerConnection.close(); // Close PC if created
+                peerConnection = null;
+                throw error; // Propagate to stop call
+            }
+        }
+
+        async function startCall() {
+            if (!callRef || chatState !== 'CHATTING') return; // Check state
+            console.log('User initiating call...');
+            callButton.disabled = true;
+            callStatusDiv.textContent = 'Initializing call...';
+
+            const currentCallSnapshot = await onValue(callRef, (snap) => snap, { onlyOnce: true });
+            const currentCallState = currentCallSnapshot.val();
+
+            if (currentCallState && currentCallState.state !== 'idle' && currentCallState.state !== 'ended') {
+                console.warn("Call cannot be started, existing state:", currentCallState.state);
+                callStatusDiv.textContent = `Cannot start: Call ${currentCallState.state}`;
+                updateCallUI(currentCallState);
+                return;
+            }
+
+            try {
+                await createPeerConnection();
+                if (!peerConnection) return;
+
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                console.log("Offer created and set as local description.");
+
+                const callData = {
+                    state: 'ringing', initiator: 'user', timestamp: serverTimestamp(),
+                    userName: userName, offer: { type: offer.type, sdp: offer.sdp },
+                    answer: null, iceCandidates: null, endedBy: null
+                };
+
+                await remove(callRef); // Clean old call data first
+                await set(callRef, callData);
+                console.log("Call data with offer sent to Firebase.");
+
+                listenForCallSignals();
+                updateCallUI(callData);
+
+            } catch (error) {
+                console.error("Error during call initiation:", error);
+                callStatusDiv.textContent = 'Call failed to start.';
+                displayBotMessage("Error: Call initiation failed.");
+                hangUpCall(false); // Clean up WebRTC resources
+            }
+        }
+
+        function listenForCallSignals() {
+            if (!callRef || chatState !== 'CHATTING') return; // Check state
+            cleanupSignalListeners();
+
+            const answerRef = ref(db, `chats/${userId}/call/answer`);
+            callSignalListeners.answer = onValue(answerRef, async (snapshot) => {
+                const answer = snapshot.val();
+                // Check PC exists and expects an answer
+                 if (answer && peerConnection && peerConnection.signalingState === 'have-local-offer') {
+                    console.log("Received answer:", answer);
+                    try {
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                        console.log("Remote description (answer) set.");
+                    } catch (error) {
+                        console.error("Error setting remote description:", error);
+                    }
+                }
+            });
+
+            const adminIceCandidatesRef = query(ref(db, `chats/${userId}/call/iceCandidates/admin`)); // Query needed?
+             callSignalListeners.ice = onChildAdded(adminIceCandidatesRef, async (snapshot) => {
+                const candidate = snapshot.val();
+                // Check PC exists and remote description might be set or setting
+                 if (candidate && peerConnection && peerConnection.signalingState !== 'closed') {
+                    console.log("Received ICE candidate from admin:", candidate);
+                    try {
+                         await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                    } catch (error) {
+                         if (!error.message.includes("remote description is not set") && !error.message.includes("PeerConnection is closed")) {
+                            console.error("Error adding received ICE candidate:", error);
+                         }
+                    }
+                }
+            });
+        }
+
+
+        function cleanupSignalListeners() {
+             // ... (same as previous version)
+            if (callSignalListeners.answer && callRef) { // Check callRef exists
+                off(ref(db, `chats/${userId}/call/answer`), 'value', callSignalListeners.answer);
+                callSignalListeners.answer = null;
+            }
+            if (callSignalListeners.ice && callRef) { // Check callRef exists
+                 // Need the correct ref for off()
+                 const adminIceCandidatesRef = ref(db, `chats/${userId}/call/iceCandidates/admin`);
+                 off(adminIceCandidatesRef, 'child_added', callSignalListeners.ice);
+                 callSignalListeners.ice = null;
+             }
+        }
+
+
+        function handleCallButtonClick() {
+            if (chatState !== 'CHATTING') return; // Only allow if chatting
+
+            const currentState = callButton.dataset.callState || 'idle';
+            console.log(`Call button clicked, current state: ${currentState}`);
+
+             if (currentState === 'idle' || currentState === 'ended') {
+                 startCall();
+             } else if (currentState === 'ringing' || currentState === 'active') {
+                 hangUpCall(true); // User explicitly hangs up, signal Firebase
+             }
+         }
+
+        function hangUpCall(signalFirebase = true) {
+            console.log(`Hanging up call. Signal Firebase: ${signalFirebase}`);
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+                localAudio.srcObject = null;
+            }
+            remoteAudio.srcObject = null;
+
+            cleanupSignalListeners();
+
+             if (signalFirebase && callRef && chatState !== 'BLOCKED') { // Check state before signaling
+                  update(callRef, {
+                      state: 'ended', endedBy: 'user', endTimestamp: serverTimestamp()
+                  }).catch(error => console.error("Error signaling call end:", error));
+             }
+
+             // Reset UI elements associated with an active call
+             if (chatState !== 'BLOCKED') {
+                 callButton.textContent = 'Audio Call';
+                 callButton.disabled = (chatState !== 'CHATTING'); // Disable if not chatting
+                 callButton.dataset.callState = 'ended';
+                 callStatusDiv.textContent = (chatState === 'CHATTING') ? '' : callStatusDiv.textContent; // Clear status only if chatting
+             }
+        }
+
+        function updateCallUI(callState) {
+             // This function should only run if chatState is CHATTING
+             if (chatState !== 'CHATTING') return;
+
+             const state = callState?.state || 'idle';
+             callButton.dataset.callState = state; // Store state on button
+
+             switch (state) {
+                 case 'ringing':
+                     if (callState.initiator === 'user') {
+                         callStatusDiv.textContent = 'Calling Admin...';
+                         callButton.textContent = 'Cancel Call';
+                         callButton.disabled = false;
+                     } else { /* Admin initiated - Ignore for now */ }
+                     break;
+                 case 'active':
+                     callStatusDiv.textContent = 'Call in progress';
+                     callButton.textContent = 'End Call';
+                     callButton.disabled = false;
+                     break;
+                 case 'ended':
+                      callStatusDiv.textContent = `Call ended.`; // Simpler message
+                      callButton.textContent = 'Audio Call';
+                      callButton.disabled = false;
+                      hangUpCall(false); // Ensure local cleanup if state becomes 'ended'
+                      break;
+                 case 'idle':
+                 default:
+                     callStatusDiv.textContent = ''; // Clear status in idle state
+                     callButton.textContent = 'Audio Call';
+                     callButton.disabled = false;
+                     hangUpCall(false); // Ensure local cleanup if state becomes 'idle'
+                     break;
+             }
+        }
+
+
+        // --- Notifications ---
+        function requestNotificationPermission() {
+            // ... (same as previous version)
+            if (!('Notification' in window)) return;
+            if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+                Notification.requestPermission().then(permission => {
+                    console.log(`Notification permission: ${permission}`);
+                });
+            }
+        }
+
+        function showNotification(message) {
+            // ... (same as previous version)
+            if (!('Notification' in window) || Notification.permission !== 'granted' || !document.hidden) {
+                return;
+            }
+            new Notification('Chat Support', { body: message });
+        }
+
+        // --- Cleanup ---
+        function cleanupListeners() {
+             console.log("Cleaning up Firebase listeners...");
+             // Use check for ref existence before calling off()
+             if (messageListener && messagesRef) off(messagesRef, 'child_added', messageListener);
+             if (adminStatusListener && adminOnlineRef) off(adminOnlineRef, 'value', adminStatusListener);
+             if (adminTypingListener && adminTypingRef) off(adminTypingRef, 'value', adminTypingListener);
+             if (callListener && callRef) off(callRef, 'value', callListener);
+             if (connectedListener && connectedRef) off(connectedRef, 'value', connectedListener);
+             if (blockListener && userMetadataRef) off(ref(db, `chats/${userId}/metadata/isBlocked`), 'value', blockListener);
+
+
+             cleanupSignalListeners();
+
+             messageListener = adminStatusListener = adminTypingListener = callListener = connectedListener = blockListener = null;
+         }
+
+         window.addEventListener('beforeunload', () => {
+             // Attempt to end call gracefully if active
+             if (peerConnection && peerConnection.connectionState !== 'closed') {
+                 hangUpCall(true);
+             }
+             // Note: Firebase onDisconnect handles the removal now,
+             // so explicit cleanup might not be strictly needed unless debugging.
+             cleanupListeners();
+         });
+
+
+        // --- Run ---
+        initApp();
+
+    </script>
+</body>
+</html>
