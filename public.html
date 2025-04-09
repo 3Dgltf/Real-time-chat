@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Colorful Chat App</title>
+    <style>
+        /* Styles from Project UI design.html - Applied directly */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+            min-height: 100vh; /* Use min-height for flexibility */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            padding: 10px; /* Add some padding for smaller screens */
+        }
+        .chat-container {
+            width: 90%;
+            max-width: 500px;
+            height: 85vh; /* Adjusted height */
+            max-height: 700px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px); /* Safari */
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(255, 255, 255, 0.18); /* Subtle border */
+        }
+
+        .chat-header { /* Added Header */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 0.9em;
+        }
+
+        #admin-status .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-left: 5px;
+            vertical-align: middle;
+            background-color: #ccc; /* Default offline */
+            transition: background-color 0.3s ease;
+        }
+        #admin-status .status-dot.online { background-color: #33ff33; }
+        #admin-status .status-dot.offline { background-color: #ccc; }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            padding-right: 5px; /* Space for scrollbar */
+            display: flex;
+            flex-direction: column;
+        }
+         /* Scrollbar styling (optional, webkit specific) */
+        .messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        .messages::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+        }
+        .messages::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .message-wrapper { /* Wrapper for alignment */
+             display: flex;
+             margin-bottom: 10px;
+             max-width: 85%;
+        }
+        .message-wrapper.sent {
+             align-self: flex-end;
+             justify-content: flex-end; /* Align content right */
+        }
+         .message-wrapper.received {
+             align-self: flex-start;
+        }
+
+        .message-wrapper p {
+            padding: 10px 15px;
+            border-radius: 15px;
+            word-wrap: break-word;
+            background: rgba(255, 255, 255, 0.2); /* Default bubble */
+            color: #fff; /* Default text */
+            line-height: 1.4;
+        }
+        .message-wrapper.sent p {
+            background-color: #00c6ff; /* Original sent color */
+            color: #000;
+            border-bottom-right-radius: 5px; /* Bubble tail */
+        }
+        .message-wrapper.received p {
+            background-color: #ffd700; /* Original received color */
+            color: #000;
+            border-bottom-left-radius: 5px; /* Bubble tail */
+        }
+
+        .message-wrapper .timestamp {
+            font-size: 0.7em;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 4px;
+            display: block; /* Ensure it takes its own line */
+        }
+         .message-wrapper.sent .timestamp { text-align: right; }
+         .message-wrapper.received .timestamp { text-align: left; }
+
+        #typing-indicator { /* Added Typing Indicator */
+            min-height: 18px;
+            font-style: italic;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85em;
+            margin-bottom: 5px;
+            padding-left: 5px;
+            transition: opacity 0.3s ease;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 15px; /* Slightly more padding */
+            border: none;
+            border-radius: 10px;
+            background-color: rgba(255, 255, 255, 0.9); /* Brighter input */
+            color: #333;
+            outline: none;
+        }
+        input[type="text"]::placeholder {
+             color: #888;
+        }
+
+        button {
+            padding: 12px 18px;
+            border: none;
+            border-radius: 10px;
+            background-color: #00ffcc; /* Original button color */
+            color: #000; /* Ensure contrast */
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s ease;
+        }
+        button:hover {
+            background-color: #00ccaa; /* Original hover */
+        }
+        button:disabled {
+             background-color: #aaa;
+             cursor: not-allowed;
+        }
+
+        .audio-call {
+            margin-top: 10px;
+            background-color: #ff4f81; /* Original call button color */
+            color: white;
+            width: 100%; /* Full width */
+        }
+         .audio-call:hover {
+             background-color: #f03a6a; /* Darker hover for call */
+         }
+
+        #call-status { /* Added Call Status */
+             margin-top: 8px;
+             text-align: center;
+             font-weight: bold;
+             min-height: 20px;
+             font-size: 0.9em;
+        }
+
+        /* Mobile responsiveness adjustments */
+        @media (max-width: 600px) {
+            body { padding: 0; }
+            .chat-container {
+                width: 100%;
+                height: 100vh; /* Full height on mobile */
+                max-height: none;
+                border-radius: 0;
+                padding: 15px; /* Adjust padding */
+            }
+            .chat-header { font-size: 0.8em; padding-bottom: 8px; margin-bottom: 10px;}
+            .message-wrapper { max-width: 90%; }
+            input[type="text"] { padding: 10px 12px; }
+            button { padding: 10px 15px; }
+            .audio-call { padding: 10px; }
+        }
+
+        /* Name Prompt Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+        }
+        .modal-overlay.visible {
+             opacity: 1;
+             visibility: visible;
+             transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            background: white;
+            padding: 30px 40px;
+            border-radius: 15px;
+            text-align: center;
+            color: #333;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.visible .modal-content {
+             transform: scale(1);
+        }
+        .modal-content h2 {
+            margin-bottom: 15px;
+            color: #6a11cb;
+        }
+        .modal-content input[type="text"] {
+             width: 100%;
+             padding: 10px;
+             margin-top: 10px;
+             margin-bottom: 20px;
+             border: 1px solid #ccc;
+             border-radius: 8px;
+             display: block; /* Ensure it's block level */
+             background-color: #fff; /* Override potential conflicts */
+             color: #333;
+        }
+        .modal-content button {
+             background-color: #2575fc; /* Blue button */
+             color: white;
+        }
+        .modal-content button:hover {
+             background-color: #1a5fce;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Name Prompt Modal -->
+    <div id="namePromptModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Welcome!</h2>
+            <p>Please enter your name to start chatting:</p>
+            <input type="text" id="userNameInput" placeholder="Your Name" required />
+            <button id="startChatButton">Start Chat</button>
+        </div>
+    </div>
+
+    <!-- Main Chat UI -->
+    <div class="chat-container">
+        <div class="chat-header"> <!-- Added Header -->
+             <span>Chat with Support</span>
+             <div id="admin-status">Admin: <span class="status-dot offline" title="Offline"></span></div>
+        </div>
+        <div class="messages" id="messages">
+             <!-- Messages will appear here -->
+        </div>
+        <div id="typing-indicator"></div> <!-- Added Typing Indicator -->
+        <div class="input-container">
+            <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off" />
+            <button id="sendButton">Send</button>
+        </div>
+        <button class="audio-call" id="audioCallButton">Start Audio Call</button>
+        <div id="call-status"></div> <!-- Added Call Status -->
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import functions from the Firebase SDK CDN
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"; // Use a specific stable version
+        import { getDatabase, ref, push, set, onValue, onChildAdded, serverTimestamp, onDisconnect, query, orderByChild, limitToLast, off, update } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js";
+        // import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-analytics.js"; // Optional
+
+        // Your web app's Firebase configuration (Provided by User)
+        const firebaseConfig = {
+            apiKey: "AIzaSyA5mBW5mXff46acu01BbPmZh8LGGXV42v8",
+            authDomain: "chat-app-ddecb.firebaseapp.com",
+            databaseURL: "https://chat-app-ddecb-default-rtdb.firebaseio.com",
+            projectId: "chat-app-ddecb",
+            storageBucket: "chat-app-ddecb.firebasestorage.app",
+            messagingSenderId: "534760202357",
+            appId: "1:534760202357:web:da7d90561af1c4220a183c",
+            measurementId: "G-MCSSLKG71W"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        // const analytics = getAnalytics(app); // Optional
+
+        // --- DOM Elements ---
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const adminStatusSpan = document.getElementById('admin-status').querySelector('.status-dot');
+        const typingIndicatorDiv = document.getElementById('typing-indicator');
+        const callButton = document.getElementById('audioCallButton');
+        const callStatusDiv = document.getElementById('call-status');
+        const namePromptModal = document.getElementById('namePromptModal');
+        const userNameInput = document.getElementById('userNameInput');
+        const startChatButton = document.getElementById('startChatButton');
+
+        // --- State Variables ---
+        let userId = localStorage.getItem('chatUserId');
+        let userName = localStorage.getItem('chatUserName');
+        let chatRef = null;
+        let messagesRef = null;
+        let userStatusRef = null;
+        let userTypingRef = null;
+        let adminTypingRef = null;
+        let callRef = null;
+        let adminOnlineRef = ref(db, 'adminStatus/online');
+        let typingTimeout = null;
+        let messageListener = null; // To store the listener function for detachment
+        let adminStatusListener = null;
+        let adminTypingListener = null;
+        let callListener = null;
+
+        // --- Initialization ---
+        function initApp() {
+            if (userId && userName) {
+                namePromptModal.classList.remove('visible');
+                initializeChat();
+            } else {
+                namePromptModal.classList.add('visible');
+            }
+            requestNotificationPermission(); // Ask for permission early
+        }
+
+        function handleStartChat() {
+            const name = userNameInput.value.trim();
+            if (!name) {
+                alert('Please enter your name.');
+                return;
+            }
+            userName = name;
+            // Generate a unique ID if one doesn't exist
+            if (!userId) {
+                userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+                localStorage.setItem('chatUserId', userId);
+            }
+            localStorage.setItem('chatUserName', userName);
+
+            namePromptModal.classList.remove('visible');
+
+            // Store user metadata immediately
+            const userMetadataRef = ref(db, `chats/${userId}/metadata`);
+            set(userMetadataRef, {
+                userName: userName,
+                userId: userId,
+                firstSeen: serverTimestamp(),
+                lastActive: serverTimestamp()
+            }).catch(error => console.error("Error setting user metadata:", error));
+
+            initializeChat();
+        }
+
+        function initializeChat() {
+            if (!userId) {
+                console.error("Cannot initialize chat without userId.");
+                // Show name prompt again if something went wrong
+                localStorage.removeItem('chatUserId');
+                localStorage.removeItem('chatUserName');
+                namePromptModal.classList.add('visible');
+                return;
+            }
+            console.log(`Initializing chat for User: ${userName} (ID: ${userId})`);
+
+            // Define Firebase refs specific to this user
+            chatRef = ref(db, `chats/${userId}`);
+            messagesRef = ref(db, `chats/${userId}/messages`);
+            userStatusRef = ref(db, `chats/${userId}/status`);
+            callRef = ref(db, `chats/${userId}/call`);
+            userTypingRef = ref(db, `chats/${userId}/status/userTyping`);
+            adminTypingRef = ref(db, `chats/${userId}/status/adminTyping`);
+
+            // Set user online status using Firebase presence
+            const userOnlineRef = ref(db, `chats/${userId}/status/userOnline`);
+            const connectedRef = ref(db, '.info/connected');
+
+            onValue(connectedRef, (snap) => {
+                if (snap.val() === true) {
+                    set(userOnlineRef, true); // Set online
+                    // Update last active time on connect
+                    update(ref(db, `chats/${userId}/metadata`), { lastActive: serverTimestamp() });
+                    // Set offline on disconnect
+                    onDisconnect(userOnlineRef).set(false);
+                    // Also update last active on disconnect (optional, might be less accurate)
+                    // onDisconnect(ref(db, `chats/${userId}/metadata`)).update({ lastActive: serverTimestamp() });
+                } else {
+                     // Potentially handle temporary disconnection UI here if needed
+                }
+            });
+
+            // Detach previous listeners if re-initializing (safety check)
+            if (messageListener) off(messagesRef, 'child_added', messageListener);
+            if (adminStatusListener) off(adminOnlineRef, 'value', adminStatusListener);
+            if (adminTypingListener) off(adminTypingRef, 'value', adminTypingListener);
+            if (callListener) off(callRef, 'value', callListener);
+
+             // Clear existing messages before loading new ones
+            messagesDiv.innerHTML = '';
+
+            // Listen for incoming messages
+            const messagesQuery = query(messagesRef, orderByChild('timestamp'), limitToLast(100)); // Listen to recent messages
+            messageListener = onChildAdded(messagesQuery, (snapshot) => {
+                const msg = snapshot.val();
+                if (msg) {
+                     displayMessage(msg.sender, msg.text, msg.timestamp);
+                     // Trigger notification if message from admin and tab inactive
+                     if (msg.sender === 'admin' && document.hidden) {
+                         showNotification(`New message from Admin`);
+                     }
+                }
+            }, (error) => console.error("Error listening to messages:", error));
+
+            // Listen for admin online status
+            adminStatusListener = onValue(adminOnlineRef, (snapshot) => {
+                const isOnline = snapshot.val();
+                adminStatusSpan.classList.toggle('online', isOnline);
+                adminStatusSpan.classList.toggle('offline', !isOnline);
+                adminStatusSpan.title = isOnline ? 'Online' : 'Offline';
+            }, (error) => console.error("Error listening to admin status:", error));
+
+            // Listen for admin typing status
+            adminTypingListener = onValue(adminTypingRef, (snapshot) => {
+                typingIndicatorDiv.textContent = snapshot.val() ? 'Admin is typing...' : '';
+            }, (error) => console.error("Error listening to admin typing:", error));
+
+            // Listen for call status changes
+            callListener = onValue(callRef, (snapshot) => {
+                const callState = snapshot.val();
+                updateCallUI(callState);
+            }, (error) => console.error("Error listening to call status:", error));
+
+            // Event listeners for UI
+            sendButton.onclick = sendMessage;
+            messageInput.onkeydown = handleInputKeyDown; // Handles Enter key and typing
+            callButton.onclick = startCall;
+            startChatButton.onclick = handleStartChat;
+            userNameInput.onkeydown = (e) => { if (e.key === 'Enter') handleStartChat(); };
+
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            callButton.disabled = false;
+        }
+
+        // --- Messaging ---
+        function sendMessage() {
+            const msgText = messageInput.value.trim();
+            if (msgText && userId) {
+                messageInput.value = ''; // Clear input immediately
+                messageInput.focus(); // Keep focus on input
+
+                const messageData = {
+                    sender: 'user',
+                    text: msgText,
+                    timestamp: serverTimestamp(),
+                    userId: userId, // Useful for admin panel context
+                    userName: userName // Useful for admin panel context
+                    // seenByAdmin will be added by admin panel
+                };
+
+                push(messagesRef, messageData)
+                    .then(() => {
+                        // Reset user typing indicator immediately after sending
+                        if (userTypingRef) set(userTypingRef, false);
+                        clearTimeout(typingTimeout);
+                        // Update user's last active time
+                        update(ref(db, `chats/${userId}/metadata`), { lastActive: serverTimestamp() });
+                    })
+                    .catch(error => {
+                         console.error("Error sending message: ", error);
+                         // Optionally re-populate input if send failed
+                         messageInput.value = msgText;
+                         alert("Failed to send message. Please try again.");
+                    });
+            }
+        }
+
+        function displayMessage(sender, text, timestamp) {
+            const wrapper = document.createElement('div');
+            wrapper.classList.add('message-wrapper', sender === 'user' ? 'sent' : 'received');
+
+            const p = document.createElement('p');
+            p.textContent = text; // Use textContent for security
+
+            const timeSpan = document.createElement('span');
+            timeSpan.classList.add('timestamp');
+            timeSpan.textContent = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
+            wrapper.appendChild(p);
+            wrapper.appendChild(timeSpan); // Add timestamp below the bubble
+            messagesDiv.appendChild(wrapper);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // --- Typing Indicator ---
+        function handleUserTyping() {
+            if (!userTypingRef) return;
+            set(userTypingRef, true);
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                set(userTypingRef, false);
+            }, 2000); // Consider user stopped typing after 2 seconds
+        }
+
+        function handleInputKeyDown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault(); // Prevent newline on Enter
+                sendMessage();
+            } else {
+                handleUserTyping(); // Trigger typing on any other key press
+            }
+        }
+
+        // --- Audio Call (Signaling Simulation) ---
+        function startCall() {
+            if (!callRef) return;
+            console.log('Attempting to start call...');
+            callButton.disabled = true;
+            callStatusDiv.textContent = 'Calling Admin...';
+
+            // Check current call state before initiating
+            onValue(callRef, (snapshot) => {
+                 const currentCallState = snapshot.val();
+                 // Only start if idle or ended
+                 if (!currentCallState || currentCallState.state === 'idle' || currentCallState.state === 'ended') {
+                    set(callRef, {
+                        state: 'ringing',
+                        initiator: 'user',
+                        timestamp: serverTimestamp(),
+                        userName: userName // Include userName for admin notification
+                    }).catch(error => {
+                        console.error("Error starting call:", error);
+                        callStatusDiv.textContent = 'Call failed to start.';
+                        callButton.disabled = false; // Re-enable button on failure
+                    });
+                 } else {
+                     console.log("Cannot start call, another call state is active:", currentCallState.state);
+                     callStatusDiv.textContent = `Cannot start call (Current state: ${currentCallState.state})`;
+                     // Re-enable button if call couldn't start due to existing state
+                     callButton.disabled = false;
+                 }
+            }, { onlyOnce: true }); // Use onlyOnce to avoid conflicts with the main listener
+        }
+
+        function userEndCall() {
+             if (!callRef) return;
+             console.log('User ending call...');
+             update(callRef, {
+                 state: 'ended',
+                 endedBy: 'user',
+                 endTimestamp: serverTimestamp()
+             }).catch(error => console.error("Error ending call:", error));
+             // UI update will be handled by the call listener
+        }
+
+        function updateCallUI(callState) {
+            if (!callState || callState.state === 'idle' || callState.state === 'ended') {
+                callStatusDiv.textContent = callState?.state === 'ended' ? `Call ended${callState.endedBy ? ' by ' + callState.endedBy : ''}.` : '';
+                callButton.textContent = 'Start Audio Call';
+                callButton.disabled = false;
+                callButton.onclick = startCall;
+            } else if (callState.state === 'ringing') {
+                if (callState.initiator === 'user') {
+                    callStatusDiv.textContent = 'Calling Admin...';
+                    callButton.textContent = 'Cancel Call';
+                    callButton.disabled = false;
+                    callButton.onclick = userEndCall; // Allow user to cancel
+                } else {
+                    // Admin is calling the user (not standard per requirements, but handle state)
+                     callStatusDiv.textContent = 'Incoming call from Admin...';
+                     callButton.textContent = 'Join Call'; // Or Reject Call
+                     callButton.disabled = false;
+                     // Need logic here for user to accept/reject admin-initiated calls if supported
+                }
+            } else if (callState.state === 'active') {
+                callStatusDiv.textContent = 'Call in progress with Admin...';
+                callButton.textContent = 'End Call';
+                callButton.disabled = false;
+                callButton.onclick = userEndCall;
+                // Show the "Admin has joined" alert only once when state changes to active
+                if (callState.joinedBy === 'admin' && !window.adminJoinedAlertShown) {
+                    alert('Admin has joined the call! (Simulated)');
+                    window.adminJoinedAlertShown = true; // Prevent repeated alerts
+                }
+            }
+             // Reset the alert flag if the call ends or becomes idle
+             if (callState?.state === 'ended' || callState?.state === 'idle') {
+                 window.adminJoinedAlertShown = false;
+             }
+        }
+
+        // --- Notifications ---
+        function requestNotificationPermission() {
+            if (!('Notification' in window)) {
+                console.log("This browser does not support desktop notification");
+                return;
+            }
+            if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+                Notification.requestPermission().then(permission => {
+                    console.log(`Notification permission: ${permission}`);
+                });
+            }
+        }
+
+        function showNotification(message) {
+            if (!('Notification' in window) || Notification.permission !== 'granted') {
+                return; // Exit if not supported or permission denied
+            }
+            new Notification('New Message', {
+                body: message,
+                icon: 'icon.png' // OPTIONAL: Add a path to an icon file
+            });
+        }
+
+        // --- Run ---
+        initApp();
+
+    </script>
+</body>
+</html>
