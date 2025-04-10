@@ -1,0 +1,443 @@
+--- START OF FILE User panel.html ---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Support</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💬</text></svg>">
+    <style>
+        /* --- Base Styles (Original) --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        html, body { height: 100%; }
+        body { background: linear-gradient(to right, #6a11cb, #2575fc); min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; padding: 10px; }
+        /* --- Chat Container (Original) --- */
+        .chat-container { width: 95%; max-width: 550px; height: 90vh; max-height: 750px; background-color: rgba(255, 255, 255, 0.15); border-radius: 15px; padding: 0; box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: flex; flex-direction: column; border: 1px solid rgba(255, 255, 255, 0.18); overflow: hidden; }
+        /* --- Chat Header (Original) --- */
+        .chat-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.2); font-size: 0.95em; flex-shrink: 0; background-color: rgba(0, 0, 0, 0.1); }
+        #admin-status .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-left: 5px; vertical-align: middle; background-color: #ccc; transition: background-color 0.3s ease; }
+        #admin-status .status-dot.online { background-color: #33ff33; } #admin-status .status-dot.offline { background-color: #ccc; }
+        /* --- Messages Area (Original) --- */
+        .messages { flex: 1; overflow-y: auto; padding: 15px 20px 10px 20px; display: flex; flex-direction: column; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; }
+        .messages::-webkit-scrollbar { width: 6px; } .messages::-webkit-scrollbar-track { background: transparent; border-radius: 3px;} .messages::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.4); border-radius: 3px;}
+        /* --- Message Styling (Original) --- */
+        .message-wrapper { display: flex; margin-bottom: 12px; max-width: 85%; animation: fadeIn 0.3s ease-out; opacity: 0; animation-fill-mode: forwards; }
+        .message-wrapper.sent { align-self: flex-end; justify-content: flex-end; } .message-wrapper.received { align-self: flex-start; } .message-wrapper.bot { align-self: flex-start; }
+        .message-wrapper p { padding: 10px 15px; border-radius: 15px; word-wrap: break-word; background: rgba(255, 255, 255, 0.2); color: #fff; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .message-wrapper.sent p { background-color: #00c6ff; color: #000; border-bottom-right-radius: 5px; } .message-wrapper.received p { background-color: #ffd700; color: #000; border-bottom-left-radius: 5px; } .message-wrapper.bot p { background-color: rgba(255, 255, 255, 0.8); color: #333; border-bottom-left-radius: 5px;}
+        .message-wrapper .timestamp { font-size: 0.7em; color: rgba(255, 255, 255, 0.7); margin-top: 4px; display: block; }
+        .message-wrapper.sent .timestamp { text-align: right; padding-right: 5px;} .message-wrapper.received .timestamp { text-align: left; padding-left: 5px;} .message-wrapper.bot .timestamp { display: none; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        /* --- Typing Indicator (Original) --- */
+        #typing-indicator { min-height: 18px; font-style: italic; color: rgba(255, 255, 255, 0.7); font-size: 0.85em; flex-shrink: 0; padding: 0 20px 8px 20px; }
+        /* --- Input Area Container (Original) --- */
+        .input-area-container { padding: 10px 20px 15px 20px; flex-shrink: 0; background-color: rgba(0, 0, 0, 0.1); border-top: 1px solid rgba(255, 255, 255, 0.1); }
+        /* --- Input Row (Original) --- */
+        .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .input-row input[type="text"] { flex: 1; padding: 12px 15px; border: none; border-radius: 10px; background-color: rgba(255, 255, 255, 0.9); color: #333; outline: none; font-size: 0.95em; }
+        .input-row input[type="text"]::placeholder { color: #777; } .input-row input[type="text"]:disabled { background-color: #ddd; cursor: not-allowed; }
+        .input-row button { padding: 12px 18px; border: none; border-radius: 10px; background-color: #00ffcc; color: #000; cursor: pointer; font-weight: bold; transition: background-color 0.2s ease; font-size: 0.95em; }
+        .input-row button:hover { background-color: #00ccaa; } .input-row button:disabled { background-color: #aaa; cursor: not-allowed; opacity: 0.7; }
+        /* --- Call Button and Status (Original) --- */
+        .audio-call { background-color: #ff4f81; color: white; width: 100%; padding: 11px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; transition: background-color 0.2s ease, opacity 0.2s ease; flex-shrink: 0; margin-bottom: 5px; font-size: 0.95em; }
+        .audio-call:hover:not(:disabled) { background-color: #f03a6a; } /* Added :not(:disabled) */
+        .audio-call:disabled { background-color: #aaa; cursor: not-allowed; opacity: 0.7; }
+        #call-status { text-align: center; font-weight: bold; min-height: 18px; font-size: 0.8em; color: rgba(255, 255, 255, 0.8); flex-shrink: 0; }
+        /* --- Mobile Responsiveness (Original) --- */
+        @media (max-width: 600px) { body { padding: 0; } .chat-container { width: 100%; height: 100%; max-height: none; border-radius: 0; } .chat-header { padding: 10px 15px; font-size: 0.9em;} .messages { padding: 10px 15px 5px 15px; } #typing-indicator { padding: 0 15px 5px 15px; } .input-area-container { padding: 8px 15px 10px 15px; } .input-row { gap: 8px; margin-bottom: 8px;} .input-row input[type="text"] { padding: 10px 12px; font-size: 0.9em;} .input-row button { padding: 10px 15px; font-size: 0.9em;} .audio-call { padding: 10px; font-size: 0.9em;} #call-status { font-size: 0.75em; } .message-wrapper { max-width: 90%; } }
+         /* --- Hidden Audio Elements (Added) --- */
+         .hidden-audio { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <!-- Main Chat UI (Original) -->
+    <div class="chat-container">
+        <div class="chat-header">
+             <span>Chat Support</span>
+             <div id="admin-status">Admin: <span class="status-dot offline" title="Offline"></span></div>
+        </div>
+        <div class="messages" id="messages"></div>
+        <div id="typing-indicator"></div>
+        <div class="input-area-container">
+             <div class="input-row">
+                 <input type="text" id="messageInput" placeholder="Loading..." autocomplete="off" disabled/>
+                 <button id="sendButton" disabled>Send</button>
+             </div>
+             <button class="audio-call" id="audioCallButton" disabled>Audio Call</button>
+             <div id="call-status"></div>
+        </div>
+        <!-- Hidden Audio Elements for WebRTC (Added) -->
+        <audio id="localAudio" autoplay muted class="hidden-audio"></audio>
+        <audio id="remoteAudio" autoplay class="hidden-audio"></audio>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Firebase SDK Imports (Using 9.15.0 for consistency with Admin Panel call logic)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import { getDatabase, ref, push, set, onValue, onChildAdded, serverTimestamp, onDisconnect, query, orderByChild, limitToLast, off, update, remove, get } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
+
+        // Firebase configuration (Original)
+        const firebaseConfig = { /* ... your config ... */
+            apiKey: "AIzaSyA5mBW5mXff46acu01BbPmZh8LGGXV42v8", authDomain: "chat-app-ddecb.firebaseapp.com", databaseURL: "https://chat-app-ddecb-default-rtdb.firebaseio.com", projectId: "chat-app-ddecb", storageBucket: "chat-app-ddecb.firebasestorage.app", messagingSenderId: "534760202357", appId: "1:534760202357:web:da7d90561af1c4220a183c", measurementId: "G-MCSSLKG71W"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // --- DOM Elements (Original + Added for Call) ---
+        const messagesDiv = document.getElementById('messages'); const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton'); const adminStatusSpan = document.getElementById('admin-status').querySelector('.status-dot');
+        const typingIndicatorDiv = document.getElementById('typing-indicator'); const callButton = document.getElementById('audioCallButton');
+        const callStatusDiv = document.getElementById('call-status'); const localAudio = document.getElementById('localAudio');
+        const remoteAudio = document.getElementById('remoteAudio');
+
+        // --- State Variables (Original + Added for Call) ---
+        let userId = null; let userName = null; let chatState = 'AWAITING_NAME';
+        let chatRef = null; let messagesRef = null; let userStatusRef = null; let userTypingRef = null;
+        let adminTypingRef = null; let callRef = null; // Added
+        let adminOnlineRef = ref(db, 'adminStatus/online'); let userMetadataRef = null; let connectedRef = ref(db, '.info/connected');
+        let typingTimeout = null; let messageListener = null; let adminStatusListener = null; let adminTypingListener = null;
+        let callListener = null; // Added
+        let connectedListener = null; let blockListener = null;
+
+        // --- WebRTC State (Added) ---
+        let peerConnection = null; let localStream = null; let callSignalListeners = {};
+        let currentCallState = 'idle'; // 'idle', 'initiating', 'ringing', 'connecting', 'active', 'ending', 'ended'
+        let incomingAdminOffer = null; // To store offer when admin calls
+        const rtcConfig = { iceServers: [ { urls: 'stun:stun.l.google.com:19302' } ] };
+
+        // --- Log Helper (Added) ---
+        function log(level, ...args) { console[level](`[User Panel Call V2]`, ...args); }
+
+        // --- Initialization (Original - Minimal Changes) ---
+        function initApp() {
+            displayBotMessage("Welcome! Please enter your name to begin."); messageInput.placeholder = "Enter your name...";
+            messageInput.disabled = false; sendButton.disabled = false; callButton.disabled = true; callStatusDiv.textContent = '';
+            requestNotificationPermission();
+            sendButton.onclick = handleUserInput; messageInput.onkeydown = handleInputKeyDown;
+            callButton.onclick = handleCallButtonClick; // Assign call button handler
+        }
+
+        // --- Input Handling (Original) ---
+        function handleUserInput() { const t=messageInput.value.trim();if(!t)return;messageInput.value='';if(chatState==='AWAITING_NAME'){processNameInput(t);}else if(chatState==='CHATTING'){sendMessage(t);}}
+        function handleInputKeyDown(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleUserInput();}else if(chatState==='CHATTING'){handleUserTyping();}}
+
+        // --- Name Processing & Setup (Original - Minimal Changes) ---
+        function processNameInput(name) { if(!name){displayBotMessage("Name cannot be empty.");return;}if(name.length>30){displayBotMessage("Name too long.");return;}userName=name;userId='user_'+Date.now()+'_'+Math.random().toString(36).substring(2,7);chatState='INITIALIZING';displayMessage('sent',userName);messageInput.placeholder="Connecting...";messageInput.disabled=true;sendButton.disabled=true;callButton.disabled=true;displayBotMessage(`Thanks, ${userName}! Setting up...`);console.log(`Init chat: ${userName} (${userId})`);setupFirebaseConnection();}
+
+        // --- Firebase Connection Setup (Original - Minimal Changes) ---
+        async function setupFirebaseConnection() {
+            if(!userId||!userName){console.error("ID/Name missing.");displayBotMessage("Setup error.");chatState='AWAITING_NAME';messageInput.placeholder="Enter name...";messageInput.disabled=false;sendButton.disabled=false;return;}
+            chatRef=ref(db,`chats/${userId}`);messagesRef=ref(db,`chats/${userId}/messages`);userStatusRef=ref(db,`chats/${userId}/status`);
+            callRef=ref(db,`chats/${userId}/call`); // ADDED
+            userTypingRef=ref(db,`chats/${userId}/status/userTyping`);adminTypingRef=ref(db,`chats/${userId}/status/adminTyping`);userMetadataRef=ref(db,`chats/${userId}/metadata`);
+            const userBlockRef=ref(db,`chats/${userId}/metadata/isBlocked`);
+            cleanupListeners();
+            try{await set(userMetadataRef,{userName:userName,userId:userId,firstSeen:serverTimestamp(),lastActive:serverTimestamp(),isBlocked:false});
+                const userOnlineRef=ref(db,`chats/${userId}/status/userOnline`);
+                connectedListener=onValue(connectedRef,async(s)=>{if(s.val()===true){console.log("FB connected.");await set(userOnlineRef,true);await update(userMetadataRef,{lastActive:serverTimestamp()});onDisconnect(chatRef).remove();onDisconnect(userOnlineRef).set(false);}else{console.log("FB disconnected.");}});
+                const messagesQuery=query(messagesRef,orderByChild('timestamp'),limitToLast(50));messagesDiv.innerHTML='';messageListener=onChildAdded(messagesQuery,handleNewMessage);
+                adminStatusListener=onValue(adminOnlineRef,handleAdminStatusChange);adminTypingListener=onValue(adminTypingRef,handleAdminTypingChange);
+                callListener=onValue(callRef,handleCallStateChange); // ADDED
+                blockListener=onValue(userBlockRef,handleBlockStatusChange);
+                chatState='CHATTING';messageInput.placeholder="Type message...";messageInput.disabled=false;sendButton.disabled=false;
+                callButton.disabled=false; // ADDED: Enable call button
+                messageInput.focus();displayBotMessage("Connected! Send messages or call.");console.log("Chat setup complete.");
+            }catch(e){console.error("Setup error:",e);displayBotMessage("Connection failed.");chatState='AWAITING_NAME';messageInput.placeholder="Enter name...";messageInput.disabled=false;sendButton.disabled=false;}
+        }
+
+        // --- Listener Handlers (Original + Added handleCallStateChange) ---
+        function handleNewMessage(snapshot){const m=snapshot.val(),i=snapshot.key;if(m&&!document.getElementById(`msg-${i}`)){displayMessage(m.sender,m.text,m.timestamp,i);if(m.sender==='admin'&&document.hidden){showNotification(`New message`);}}}
+        function handleAdminStatusChange(snapshot){const o=snapshot.val();console.log("Admin status:",o);adminStatusSpan.classList.toggle('online',o);adminStatusSpan.classList.toggle('offline',!o);adminStatusSpan.title=o?'Online':'Offline';}
+        function handleAdminTypingChange(snapshot){if(chatState==='CHATTING'){typingIndicatorDiv.textContent=snapshot.val()?'Admin typing...':'';}}
+        // ADDED: Handler for Firebase call state changes
+        function handleCallStateChange(snapshot) {
+             const callData = snapshot.val();
+             log('debug', "Call state listener received:", callData);
+             // Check if it's an incoming call offer from admin
+             if (callData?.state === 'admin-ringing' && callData?.initiator === 'admin' && callData?.offer && currentCallState === 'idle') {
+                 log('info', `Incoming call detected from Admin.`);
+                 incomingAdminOffer = callData.offer; // Store the offer
+                 updateCallUI(callData); // Update UI to show "Admin is calling..." / "Answer"
+             } else {
+                 // Handle other state changes (active, ended, idle)
+                 updateCallUI(callData);
+             }
+        }
+        function handleBlockStatusChange(snapshot){const b=snapshot.val();if(b===true&&chatState!=='BLOCKED'){console.log("User blocked.");chatState='BLOCKED';handleBlockedStateUI();}}
+
+        // --- Blocked State Handling (Original - Minimal Changes) ---
+        function handleBlockedStateUI(){disableChatInput();callButton.disabled=true;callStatusDiv.textContent="Chat Blocked";typingIndicatorDiv.textContent='';displayBotMessage("Blocked. Refresh to start new session.");if(peerConnection){hangUpCall(false);}} // Added hangup
+
+        // --- UI Enable/Disable (Original) ---
+        function disableChatInput(){messageInput.disabled=true;sendButton.disabled=true;}
+        function enableChatInput(){if(chatState==='CHATTING'){messageInput.disabled=false;sendButton.disabled=false;messageInput.focus();}}
+
+        // --- Messaging & Display (Original) ---
+        function sendMessage(msgText){if(!msgText||chatState!=='CHATTING'||!userId){console.warn("Cannot send:",chatState);return;}const d={sender:'user',text:msgText,timestamp:serverTimestamp(),userId:userId,userName:userName};push(messagesRef,d).then(()=>{if(userTypingRef)set(userTypingRef,false);clearTimeout(typingTimeout);update(userMetadataRef,{lastActive:serverTimestamp()});console.log("Msg sent.");}).catch(e=>{console.error("Send err:",e);displayBotMessage("Send failed.");});}
+        function displayMessage(sender,text,timestamp,msgId){const w=document.createElement('div');w.classList.add('message-wrapper',sender);if(msgId)w.id=`msg-${msgId}`;const p=document.createElement('p');p.textContent=text;const t=document.createElement('span');t.classList.add('timestamp');if(sender!=='bot'){t.textContent=timestamp?new Date(timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';}w.appendChild(p);if(sender!=='bot'){w.appendChild(t);}messagesDiv.appendChild(w);scrollToBottom();void w.offsetWidth;w.style.animationPlayState='running';}
+        function displayBotMessage(text){displayMessage('bot',text,null,'bot-'+Date.now());}
+        function scrollToBottom(){setTimeout(()=>{messagesDiv.scrollTop=messagesDiv.scrollHeight;},50);}
+        function handleUserTyping(){if(!userTypingRef||chatState!=='CHATTING')return;set(userTypingRef,true);clearTimeout(typingTimeout);typingTimeout=setTimeout(()=>{set(userTypingRef,false);},2000);}
+
+        // ============================================
+        // === ADDED/MODIFIED: WebRTC Call Functions ===
+        // ============================================
+
+        async function createPeerConnection() {
+            log('debug', `Create PC`); if(!window.isSecureContext){const m="Mic needs HTTPS.";log('error',m);displayBotMessage(m);throw new Error(m);} if(peerConnection){log('debug',"Closing existing PC.");hangUpCall(false);} peerConnection=new RTCPeerConnection(rtcConfig);log('debug',"PC created."); peerConnection.onicecandidate=(e)=>{if(e.candidate&&callRef&&chatState==='CHATTING'&&currentCallState!=='idle'&&currentCallState!=='ended'){log('debug',`Send ICE`);push(ref(db,`chats/${userId}/call/iceCandidates/user`),{...e.candidate.toJSON(),sender:'user'}).catch(err=>log('error','ICE fail:',err));}}; peerConnection.ontrack=(e)=>{log('debug',`Remote track`);if(e.streams&&e.streams[0]){remoteAudio.srcObject=e.streams[0];remoteAudio.play().catch(err=>log('error',"Remote play fail:",err));}}; peerConnection.onconnectionstatechange=()=>{log('debug',`PC state: ${peerConnection?.connectionState}`);if(['disconnected','failed','closed'].includes(peerConnection?.connectionState)&&chatState!=='BLOCKED'){log('info','PC state hangup.');hangUpCall(false);}}; peerConnection.onsignalingstatechange=()=>{log('debug',`Signal state: ${peerConnection?.signalingState}`);}; try{log('debug',"Req mic...");localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});log('info',"Mic OK.");localAudio.srcObject=localStream;localStream.getTracks().forEach(t=>{if(peerConnection)peerConnection.addTrack(t,localStream);});log('debug',"Local tracks added.");}catch(e){log('error',"Mic error:",e.name,e.message);if(peerConnection)peerConnection.close();peerConnection=null;let m="Err: Mic failed.";if(e.name==='NotAllowedError'){m="Err: Mic permission denied.";}else if(e.name==='NotFoundError'){m="Err: No mic found.";}displayBotMessage(m);callStatusDiv.textContent=m;throw e;}}
+
+        async function startCall() {
+             if(chatState!=='CHATTING'||(currentCallState!=='idle'&&currentCallState!=='ended')){log('warn',`Call start prevented: ${chatState}, ${currentCallState}`);return;} if(!callRef||!userId||!userName){log('error','Cannot start call: missing refs/info.');displayBotMessage('Call init error.');return;}
+             log('info','User init call...');callButton.disabled=true;callStatusDiv.textContent='Initializing...';currentCallState='initiating';
+             try{await createPeerConnection();if(!peerConnection)throw new Error("PC create fail.");const offer=await peerConnection.createOffer();await peerConnection.setLocalDescription(offer);log('debug',"Offer set.");const callData={state:'ringing',initiator:'user',timestamp:serverTimestamp(),userName:userName,offer:{type:offer.type,sdp:offer.sdp},answer:null,iceCandidates:null,endedBy:null};await remove(callRef);await set(callRef,callData);log('debug',"Call data sent (ringing).");
+                 listenForAdminAnswerAndIce(); // Listen for admin's response
+                 updateCallUI(callData);
+             }catch(e){log('error',"Call init error:",e);callStatusDiv.textContent='Call failed.';if(!e.message.includes('microphone')){displayBotMessage("Call failed.");}hangUpCall(false);currentCallState='idle';updateCallUI(null);}
+        }
+
+        // ADDED: Function to handle answering an incoming call from Admin
+        async function answerIncomingCall() {
+            log('info', 'User answering incoming call...');
+            if (!incomingAdminOffer || !callRef || !userId) {
+                log('error', 'Cannot answer call: Missing offer data or refs.');
+                displayBotMessage('Error answering call.');
+                updateCallUI(null); // Reset UI
+                return;
+            }
+            if (currentCallState !== 'admin-ringing') { // Ensure we are in the correct state
+                log('warn', `Cannot answer call in state: ${currentCallState}`);
+                return;
+            }
+
+            callButton.disabled = true;
+            callStatusDiv.textContent = 'Connecting...';
+            currentCallState = 'connecting'; // Transition state
+
+            try {
+                await createPeerConnection(); // Setup PC and get mic
+                if (!peerConnection) throw new Error("PeerConnection setup failed.");
+
+                // Set the admin's offer as the remote description
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(incomingAdminOffer));
+                log('debug', 'Remote description (admin offer) set.');
+
+                // Create the answer
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                log('debug', 'Answer created and set as local description.');
+
+                // Prepare answer payload for Firebase
+                const answerPayload = { type: answer.type, sdp: answer.sdp };
+
+                // Update Firebase: Set state to 'active' and add the answer
+                await update(callRef, {
+                    state: 'active', // Transition to active state
+                    answer: answerPayload
+                });
+                log('debug', 'Answer sent and state set to active in Firebase.');
+
+                // Now listen for ICE candidates from the admin
+                listenForAdminIceCandidates();
+
+                // Update local state and UI immediately (Firebase listener will confirm)
+                currentCallState = 'active';
+                updateCallUI({ state: 'active' }); // Show "End Call" button etc.
+
+            } catch (error) {
+                log('error', "Error answering call:", error);
+                callStatusDiv.textContent = 'Failed to connect.';
+                if (!error.message.includes('microphone')) {
+                    displayBotMessage("Error connecting call.");
+                }
+                hangUpCall(true); // Attempt to signal end if connection failed mid-way
+                currentCallState = 'idle'; // Reset state
+                updateCallUI(null); // Reset UI
+            } finally {
+                incomingAdminOffer = null; // Clear the stored offer
+            }
+        }
+
+
+        // Modified: Listens for Admin's Answer AND ICE when User initiates
+        function listenForAdminAnswerAndIce() {
+            if (!callRef || !userId || chatState !== 'CHATTING') return;
+            log('debug', 'Listening for Admin Answer & ICE');
+            cleanupSignalListeners(); // Clean previous before attaching new
+
+            // 1. Listen for Answer
+            const answerRef = ref(db, `chats/${userId}/call/answer`);
+            callSignalListeners.answer = onValue(answerRef, async (s) => {
+                const a = s.val();
+                if (a && a.sdp && peerConnection && peerConnection.signalingState === 'have-local-offer') {
+                    log('info', `Got answer`);
+                    try { await peerConnection.setRemoteDescription(new RTCSessionDescription(a)); log('debug',"Remote desc (answer) set."); }
+                    catch (e) { log('error', "Set answer err:", e); hangUpCall(true); }
+                }
+            }, e => { log('error', "Answer listener err:", e); cleanupSpecificListener('answer'); });
+
+            // 2. Listen for Admin ICE Candidates
+            const adminIceRef = ref(db, `chats/${userId}/call/iceCandidates/admin`);
+            callSignalListeners.admin_ice = onChildAdded(adminIceRef, async (s) => { // Use different key 'admin_ice'
+                const c = s.val();
+                if (c && c.candidate && peerConnection && peerConnection.signalingState !== 'closed') {
+                    log('debug', `Got ICE from admin`);
+                    try { await peerConnection.addIceCandidate(new RTCIceCandidate(c)); }
+                    catch (e) { if (!e.message.includes("remote description") && !e.message.includes("closed")) { log('warn', "Add admin ICE err:", e.message); } }
+                }
+            }, e => { log('error', "Admin ICE listener err:", e); cleanupSpecificListener('admin_ice'); });
+        }
+
+        // ADDED: Listens ONLY for Admin's ICE Candidates when User answers
+        function listenForAdminIceCandidates() {
+            if (!callRef || !userId || chatState !== 'CHATTING') return;
+            log('debug', 'Listening for Admin ICE Candidates (after answering)');
+            cleanupSpecificListener('admin_ice'); // Clean only this type if exists
+
+            const adminIceRef = ref(db, `chats/${userId}/call/iceCandidates/admin`);
+            callSignalListeners.admin_ice = onChildAdded(adminIceRef, async (s) => {
+                const c = s.val();
+                if (c && c.candidate && peerConnection && peerConnection.signalingState !== 'closed') {
+                    log('debug', `Got ICE from admin (post-answer)`);
+                    try { await peerConnection.addIceCandidate(new RTCIceCandidate(c)); }
+                    catch (e) { if (!e.message.includes("remote description") && !e.message.includes("closed")) { log('warn', "Add admin ICE err (post-answer):", e.message); } }
+                }
+            }, e => { log('error', "Admin ICE listener err (post-answer):", e); cleanupSpecificListener('admin_ice'); });
+        }
+
+
+        // Modified: Cleanup specific listener types
+        function cleanupSpecificListener(type) {
+            let listenerRefPath;
+            let eventType;
+            let listenerKey = type; // Use type as key directly
+
+            if (type === 'answer') {
+                listenerRefPath = `chats/${userId}/call/answer`;
+                eventType = 'value';
+            } else if (type === 'admin_ice') {
+                listenerRefPath = `chats/${userId}/call/iceCandidates/admin`;
+                eventType = 'child_added';
+            } else if (type === 'user_ice') { // Keep for completeness if user sends ICE
+                 listenerRefPath = `chats/${userId}/call/iceCandidates/user`;
+                 eventType = 'child_added';
+            } else {
+                log('warn', `Unknown listener type to clean: ${type}`);
+                return;
+            }
+
+            if (callSignalListeners[listenerKey] && callRef && userId) { // Check userId too
+                try {
+                    off(ref(db, listenerRefPath), eventType, callSignalListeners[listenerKey]);
+                    delete callSignalListeners[listenerKey];
+                    log('debug', `Cleaned ${type} listener`);
+                } catch (e) {
+                    log('warn', `Error cleaning ${type} listener:`, e);
+                }
+            }
+        }
+
+        // Modified: Cleanup all known signal listener types
+        function cleanupSignalListeners() {
+            log('debug', 'Cleaning all signal listeners');
+            cleanupSpecificListener('answer');
+            cleanupSpecificListener('admin_ice');
+            cleanupSpecificListener('user_ice'); // Clean user ICE listener too if used
+        }
+
+        // Modified: Handle different button actions based on text/state
+        function handleCallButtonClick() {
+            if (chatState !== 'CHATTING') return;
+
+            const buttonText = callButton.textContent;
+            log('debug', `Call button clicked: Text='${buttonText}', State='${currentCallState}'`);
+
+            if (buttonText === 'Audio Call') { // Assumes idle or ended state
+                startCall();
+            } else if (buttonText === 'Cancel Call' || buttonText === 'End Call') { // Handles ringing (outgoing) or active
+                hangUpCall(true);
+            } else if (buttonText === 'Answer') { // Handles incoming call ringing state
+                answerIncomingCall();
+            } else {
+                log('warn', `Call button clicked in unexpected state: ${buttonText}`);
+            }
+        }
+
+        // Modified: Hang up call logic remains largely the same
+        function hangUpCall(signalFirebase=true) {
+            if(currentCallState==='idle'||currentCallState==='ended'||currentCallState==='ending'||chatState==='BLOCKED'){if(chatState==='BLOCKED'&&(peerConnection||localStream)){log('debug','Local cleanup during block hangup.');}else{return;}}
+            log('info',`Hanging up. Signal:${signalFirebase}. State:${currentCallState}`);
+            const wasActiveOrRinging=(currentCallState==='active'||currentCallState==='ringing'||currentCallState==='admin-ringing'); // Include admin-ringing
+            currentCallState='ending';
+            if(peerConnection){peerConnection.close();peerConnection=null;}
+            if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;localAudio.srcObject=null;}
+            remoteAudio.srcObject=null;cleanupSignalListeners();
+            if(signalFirebase&&callRef&&userId&&wasActiveOrRinging){ // Check wasActiveOrRinging
+                update(callRef,{state:'ended',endedBy:'user',endTimestamp:serverTimestamp()})
+                .then(()=>log('debug','Signaled end.'))
+                .catch(e=>log('error',"Signal end err:",e));
+            }
+            incomingAdminOffer = null; // Clear any stored offer
+            currentCallState='ended';updateCallUI(null);log('info','Hangup complete.');
+        }
+
+        // Modified: Update Call UI to handle incoming call state
+        function updateCallUI(callData) {
+             if(chatState==='BLOCKED'){log('debug','Call UI skip: Blocked.');callButton.disabled=true;callButton.textContent='Audio Call';callStatusDiv.textContent="Chat Blocked";return;}
+             if(chatState!=='CHATTING'){callButton.disabled=true;callButton.textContent='Audio Call';callStatusDiv.textContent='';currentCallState='idle';return;}
+
+             const state = callData?.state || 'idle';
+             const initiator = callData?.initiator;
+             log('debug', `Update Call UI: FBState=${state}, Init=${initiator}, Local=${currentCallState}`);
+
+             // Update local state unless ending
+             if (currentCallState !== 'ending') { currentCallState = state; }
+             else if (state === 'ended' || state === 'idle') { currentCallState = state; }
+
+             switch (state) {
+                 case 'ringing': // User initiated
+                     callStatusDiv.textContent = 'Calling Admin...'; callButton.textContent = 'Cancel Call'; callButton.disabled = false;
+                     break;
+                 case 'admin-ringing': // Admin initiated
+                     callStatusDiv.textContent = 'Admin is calling...'; callButton.textContent = 'Answer'; callButton.disabled = false; // Enable Answer button
+                     // Offer is stored in incomingAdminOffer via handleCallStateChange
+                     break;
+                 case 'active':
+                     callStatusDiv.textContent = 'Call in progress'; callButton.textContent = 'End Call'; callButton.disabled = false;
+                     if (remoteAudio.srcObject && remoteAudio.paused) { remoteAudio.play().catch(e=>log('warn','Retry remote play fail:',e)); }
+                     break;
+                 case 'ended':
+                      callStatusDiv.textContent = `Call ended.`; callButton.textContent = 'Audio Call'; callButton.disabled = false;
+                      if (peerConnection || localStream) { log('debug',"Detected 'ended', local cleanup."); hangUpCall(false); }
+                      setTimeout(() => { if (currentCallState === 'ended' && chatState === 'CHATTING') { callStatusDiv.textContent = ''; } }, 3000);
+                      break;
+                 case 'idle': default:
+                     callStatusDiv.textContent = ''; callButton.textContent = 'Audio Call'; callButton.disabled = false;
+                     if (peerConnection || localStream) { log('debug',"Detected 'idle', local cleanup."); hangUpCall(false); }
+                     currentCallState = 'idle'; incomingAdminOffer = null; // Clear offer on idle
+                     break;
+             }
+        }
+
+        // --- Notifications (Original) ---
+        function requestNotificationPermission(){if(!('Notification'in window))return;if(Notification.permission!=='granted'&&Notification.permission!=='denied'){Notification.requestPermission().then(p=>console.log(`Notif: ${p}`));}}
+        function showNotification(message){if(!('Notification'in window)||Notification.permission!=='granted'||!document.hidden){return;}new Notification('Chat Support',{body:message});}
+
+        // --- Cleanup (Original - Minimal Changes) ---
+        function cleanupListeners() {
+             console.log("Cleaning listeners");
+             if(messageListener&&messagesRef)off(messagesRef,'child_added',messageListener);if(adminStatusListener&&adminOnlineRef)off(adminOnlineRef,'value',adminStatusListener);if(adminTypingListener&&adminTypingRef)off(adminTypingRef,'value',adminTypingListener);
+             if(callListener&&callRef)off(callRef,'value',callListener); // Clean call listener
+             if(connectedListener&&connectedRef)off(connectedRef,'value',connectedListener);if(blockListener&&userMetadataRef)off(ref(db,`chats/${userId}/metadata/isBlocked`),'value',blockListener);
+             cleanupSignalListeners(); // Clean WebRTC signal listeners
+             messageListener=adminStatusListener=adminTypingListener=callListener=connectedListener=blockListener=null;
+         }
+         window.addEventListener('beforeunload', () => { log('info','beforeunload');if(currentCallState==='active'||currentCallState==='ringing'||currentCallState==='admin-ringing'){hangUpCall(true);}cleanupListeners();}); // Added admin-ringing
+
+        // --- Run ---
+        initApp(); // Original entry point
+
+    </script>
+</body>
+</html>
